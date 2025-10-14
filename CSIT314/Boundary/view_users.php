@@ -63,7 +63,10 @@ class view_users
                     <td><strong>{$name}</strong></td>
                     <td><span class='badge badge-{$profile}'>{$profile}</span></td>
                     <td>{$created}</td>
-                    <td><a href='?id={$id}' class='action-link'>View Details</a></td>
+                    <td>
+                      <a href='?id={$id}' class='action-link'>View Details</a>
+                      <a href='update_usersPg.php?id={$id}' class='action-link'>Update</a>
+                    </td>
                   </tr>";
         }
 
@@ -493,4 +496,5 @@ $userName = htmlspecialchars($_SESSION['name'] ?? 'User');
     ?>
   </div>
 </body>
+
 </html>
