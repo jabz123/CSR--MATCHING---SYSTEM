@@ -10,10 +10,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: CSIT314v3   # ✅ Avoid repeating cd CSIT314v3
-
     steps:
     - name: 📥 Checkout repository
       uses: actions/checkout@v3
@@ -21,21 +17,26 @@ jobs:
     - name: 🧰 Setup PHP
       uses: shivammathur/setup-php@v2
       with:
-        php-version: '8.0'
+        php-version: "8.0"
         extensions: mbstring, pdo, pdo_mysql
+        coverage: none
 
     - name: 📦 Install Composer dependencies
       run: |
+        cd CSIT314v3
         composer install --no-interaction --prefer-dist
 
     - name: ✅ Validate Composer
       run: |
+        cd CSIT314v3
         composer validate --strict
 
     - name: 🔎 Run PHP Syntax Check
       run: |
+        cd CSIT314v3
         find . -type f -name "*.php" -print0 | xargs -0 -n1 php -l
 
-    - name: 🧪 Run PHPUnit Tests
+    - name: 🧪 Run PHPUnit Tests (if tests folder exists)
       run: |
-        if [ -d "tests" ]; then ./vendor/bin/phpunit --testdox; else echo "No PHPUnit tests found — skipping"; fi
+        cd CSIT314v3
+        if [ -d "tests" ]; then vendor/bin/phpunit --testdox; else echo "No tests found"; fi
