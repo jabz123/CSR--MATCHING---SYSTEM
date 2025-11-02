@@ -1,0 +1,88 @@
+name: CI (PHP 8.0) + ZIP Release
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-test-zip:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up PHP 8.0
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.0'
+          extensions: mbstring, json, pdo, pdo_mysql, curl, intl, openssl
+          coverage: none
+          tools: composer
+
+      - name: Show PHP version
+        run: php -v
+
+      - name: Validate composer.json (if exists)
+        if: ${{ hashFiles('composer.json') != '' }}
+        run: composer validate --no-check-publish
+
+      - name: Install Composer dependencies (if composer.json exists)
+        if: ${{ hashFiles('composer.json') != '' }}
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: PHP syntax check (lint all *.php)
+        run: |
+          set -e
+          mapfile -t files < <(git ls-files '*.php')
+          for f in "${files[@]}"; do
+            php -l "$f"
+          done
+
+      # PHPUnit is optional: will only run if phpunit is present
+      - name: Run PHPUnit tests (if available)
+        if: ${{ hashFiles('vendor/bin/phpunit') != '' || hashFiles('phpunit.xml*') != '' }}
+        run: |
+          if [ -f vendor/bin/phpunit ]; then
+            vendor/bin/phpunit --no-coverage
+          else
+            echo "phpunit not installed; skipping."
+          fi
+
+      - name: Create ZIP (include everything except .git folder)
+        run: |
+          ZIP_NAME="CSIT314-BCE-System-v1.0.zip"
+          sudo apt-get update -y
+          sudo apt-get install -y zip
+          zip -r "$ZIP_NAME" . -x ".git/*"
+          echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CSIT314-BCE-System
+          path: ${{ env.ZIP_NAME }}
+
+      # Auto-create a GitHub Release and attach the ZIP
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: build-${{ github.run_number }}
+          release_name: CSIT314-BCE-System-v1.0
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./${{ env.ZIP_NAME }}
+          asset_name: ${{ env.ZIP_NAME }}
+          asset_content_type: application/zip
