@@ -1,8 +1,0 @@
-[30-Oct-2025 22:11:22 Europe/Berlin] shortlist_add status=success csr=6 req=24
-[30-Oct-2025 22:11:22 Europe/Berlin] shortlist_add status=success csr=6 req=21
-[30-Oct-2025 22:11:23 Europe/Berlin] shortlist_add status=success csr=6 req=20
-[30-Oct-2025 22:11:23 Europe/Berlin] shortlist_add status=success csr=6 req=19
-[30-Oct-2025 22:11:24 Europe/Berlin] shortlist_add status=success csr=6 req=18
-[31-Oct-2025 10:25:31 Europe/Berlin] shortlist_add status=success csr=5 req=19
-[31-Oct-2025 10:30:25 Europe/Berlin] shortlist_add status=success csr=5 req=20
-[31-Oct-2025 16:45:21 Europe/Berlin] shortlist_add status=duplicate csr=5 req=19
