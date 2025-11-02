@@ -1,4 +1,4 @@
-name: PHP CI (Build • Lint • Test)
+name: PHP CI/CD (Build • Lint • Test • Deploy)
 
 on:
   push:
@@ -7,8 +7,8 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
 
+  build:
     runs-on: ubuntu-latest
 
     steps:
@@ -59,3 +59,18 @@ jobs:
         else
           echo "No tests found, skipping PHPUnit."
         fi
+
+  deploy:
+    needs: build   # ❗ Only run if build job succeeds
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 🚀 Mock Deployment
+      run: |
+        echo "✅ Build successful!"
+        echo "🚀 Starting deployment..."
+        echo "📦 Packaging application..."
+        sleep 2
+        echo "📤 Uploading to mock server..."
+        sleep 2
+        echo "🎉 Deployment completed successfully (Mock Deploy)."
