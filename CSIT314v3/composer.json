@@ -1,0 +1,8 @@
+{
+    "name": "csit314v3/app",
+    "autoload": {
+        "psr-4": {
+            "App\\": ""
+        }
+    }
+}
