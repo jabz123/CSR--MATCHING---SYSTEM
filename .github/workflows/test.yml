@@ -1,4 +1,4 @@
-name: PHP CI
+name: PHP CI (Build • Lint • Test)
 
 on:
   push:
@@ -8,35 +8,54 @@ on:
 
 jobs:
   build:
+
     runs-on: ubuntu-latest
 
     steps:
     - name: 📥 Checkout repository
       uses: actions/checkout@v3
 
-    - name: 🧰 Setup PHP
+    - name: 🧰 Setup PHP 8.0
       uses: shivammathur/setup-php@v2
       with:
-        php-version: "8.0"
+        php-version: '8.0'
         extensions: mbstring, pdo, pdo_mysql
         coverage: none
+        tools: composer
 
-    - name: 📦 Install Composer dependencies
+    - name: 📦 Install Composer dependencies (if composer.json exists)
       run: |
-        cd CSIT314v3
-        composer install --no-interaction --prefer-dist
+        if [ -f "composer.json" ]; then
+          composer install --no-interaction --prefer-dist
+        else
+          echo "No composer.json found, skipping install"
+        fi
 
-    - name: ✅ Validate Composer
+    - name: ✅ Validate Composer config (if composer.json exists)
       run: |
-        cd CSIT314v3
-        composer validate --strict
+        if [ -f "composer.json" ]; then
+          composer validate --strict
+        else
+          echo "No composer.json found, skipping validation"
+        fi
 
-    - name: 🔎 Run PHP Syntax Check
+    - name: 🔎 PHP Syntax Check (lint all files, show all errors)
       run: |
-        cd CSIT314v3
-        find . -type f -name "*.php" -print0 | xargs -0 -n1 php -l
+        echo "Scanning PHP files for syntax errors..."
+        find . -type f -name "*.php" | while read file; do
+          php -l "$file" || { echo "❌ Syntax error in $file"; exit 1; }
+        done
+        echo "✅ No syntax errors found."
 
-    - name: 🧪 Run PHPUnit Tests (if tests folder exists)
+    - name: 🧪 Run PHPUnit Tests (if tests exist)
       run: |
-        cd CSIT314v3
-        if [ -d "tests" ]; then vendor/bin/phpunit --testdox; else echo "No tests found"; fi
+        if [ -d "tests" ]; then
+          if [ -f "vendor/bin/phpunit" ]; then
+            vendor/bin/phpunit --testdox
+          else
+            echo "PHPUnit not found. Install it via Composer."
+            exit 1
+          fi
+        else
+          echo "No tests found, skipping PHPUnit."
+        fi
