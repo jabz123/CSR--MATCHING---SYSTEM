@@ -31,8 +31,8 @@ final class CSRSearchHistoryController
      * @param string|null $startDate Filter from a given date (optional)
      * @return array Matching service records
      */
-    public function searchHistory(int $csrId, ?string $keyword = '', ?string $startDate = '', ?string $endDate = ''): array
+    public function searchHistory(int $csrId, ?string $keyword = '', ?string $startDate = ''): array
     {
-        return $this->entity->searchHistory($csrId, $keyword, $startDate, $endDate);
+        return $this->entity->searchHistory($csrId, $keyword, $startDate);
     }
 }

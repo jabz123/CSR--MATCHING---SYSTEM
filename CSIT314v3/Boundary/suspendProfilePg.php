@@ -6,9 +6,6 @@ require_once __DIR__ . '/../bootstrap.php';
 use App\Controller\SuspendProfileController;
 require_once __DIR__ . '/../Controller/suspendProfileController.php';
 
-/* ----------------------------------------------------
-   ✅ Helper Functions (Context-Relevant for Suspend Profile)
----------------------------------------------------- */
 
 /** Validate profile ID */
 function get_profile_id(): ?int {
@@ -38,10 +35,6 @@ function build_status_message(string $action, bool $success): array {
         'message' => 'Failed to update profile status.'
     ];
 }
-
-/* ----------------------------------------------------
-   🔻 YOUR ORIGINAL CODE BELOW (Unchanged)
----------------------------------------------------- */
 
 // Validate request parameters
 $id = get_profile_id();

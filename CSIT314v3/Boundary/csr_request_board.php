@@ -1,5 +1,9 @@
 <?php
 declare(strict_types=1);
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+error_reporting(E_ALL);
+
 
 require_once __DIR__ . '/../bootstrap.php';
 session_start();
@@ -7,8 +11,10 @@ session_start();
 
 use App\Controller\CSRSearchRequestsController;
 require_once $_SERVER['DOCUMENT_ROOT'] . '/CSIT314v3/Controller/CSRSearchRequestsController.php';
+use App\Controller\CSRReadRequestsController;
+require_once $_SERVER['DOCUMENT_ROOT'] . '/CSIT314v3/Controller/CSRReadRequestsController.php';
 
-// ✅ Restrict access: CSR only
+// Restrict access: CSR only
 if (!isset($_SESSION['user_id']) || strtolower($_SESSION['profile_type'] ?? '') !== 'csr') {
     header('Location: login.php');
     exit;
@@ -18,19 +24,26 @@ if (!isset($_SESSION['user_id']) || strtolower($_SESSION['profile_type'] ?? '') 
 // FUNCTIONS (Boundary Layer)
 // =========================
 
-/** ✅ Get and sanitize search term */
+/** Get and sanitize search term */
 function getSearchTerm(): string {
     return isset($_GET['q']) ? trim($_GET['q']) : '';
 }
 
-/** ✅ Load requests from controller */
-function loadRequests(string $searchTerm): array {
-    $controller = new CSRSearchRequestsController();
-    return $controller->searchRequests($searchTerm);
+/** Load requests from controller */
+function loadRequests(string $keyword): array {
+    if ($keyword !== null && $keyword !== '') {
+        // Use the SEARCH controller when keyword exists
+        $searchCtl = new CSRSearchRequestsController();
+        return $searchCtl->searchRequests($keyword);
+    }
+
+    // Otherwise, use the READ controller
+    $listCtl = new CSRReadRequestsController();
+    return $listCtl->readAllRequests();
 }
 
-/** ✅ Render the page */
-function renderPage(array $requests, string $searchTerm, string $userName): void {
+/** Render the page */
+function renderPage(array $requests, string $keyword, string $userName): void {
     ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -39,7 +52,6 @@ function renderPage(array $requests, string $searchTerm, string $userName): void
 <title>CSR Request Board</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-/* ✅ Your CSS unchanged */
   body { font-family: Arial, sans-serif; background: #f4f4fc; margin: 0; padding: 0; }
   header { background: #4f46e5; color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; }
   header h2 { margin: 0; }
@@ -105,7 +117,7 @@ function addToShortlist(requestId, button) {
 
   <form method="get">
     <input type="text" name="q" placeholder="Search by title, content, or location"
-           value="<?= htmlspecialchars($searchTerm) ?>">
+           value="<?= htmlspecialchars($keyword) ?>">
     <button type="submit">Search</button>
   </form>
 
@@ -152,8 +164,8 @@ function addToShortlist(requestId, button) {
 // RUN PAGE
 // =========================
 
-$searchTerm = getSearchTerm();
-$requests = loadRequests($searchTerm);
+$keyword = getSearchTerm();
+$requests = loadRequests($keyword);
 $userName = htmlspecialchars($_SESSION['username'] ?? 'CSR Rep', ENT_QUOTES, 'UTF-8');
 
-renderPage($requests, $searchTerm, $userName);
+renderPage($requests, $keyword, $userName);

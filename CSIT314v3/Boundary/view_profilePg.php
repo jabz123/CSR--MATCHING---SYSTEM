@@ -5,9 +5,6 @@ require_once __DIR__ . '/../bootstrap.php';
 use App\Controller\ViewProfileDetailsController;
 require_once __DIR__ . '/../Controller/ViewProfileDetailsController.php';
 
-/* ============================================================
-   ✅ Helper Functions (No Class)
-============================================================ */
 
 /** Validate and return profile ID */
 function getProfileId(): int {

@@ -17,12 +17,33 @@ require_once __DIR__ . '/../Controller/PMDailyReportController.php';
 session_start();
 
 /* ────────────────────────────────────────────────
-   Helper Functions (ADDED)
+   Helper Functions
    ──────────────────────────────────────────────── */
 
 function sanitize_input(string $value): string {
     return trim((string)$value);
 }
+
+function normalize_date(?string $value): ?string {
+    if ($value === null) {
+        return null;
+    }
+
+    $value = trim($value);
+    if ($value === '') {
+        return null;
+    }
+
+    $timestamp = strtotime($value);
+    if ($timestamp === false) {
+        // invalid date string → treat as null or you can set a default
+        return null;
+    }
+
+    // Normalise to Y-m-d for database
+    return date('Y-m-d', $timestamp);
+}
+
 
 function get_report_controller(string $type) {
     return match ($type) {
@@ -33,14 +54,31 @@ function get_report_controller(string $type) {
     };
 }
 
-function get_report_data($controller): array {
+function get_report_data($controller, string $reportType, ?string $from, ?string $to): array {
     try {
+        if ($reportType === 'daily') {
+            // Daily report expects the date range
+            return $controller->handleRequest($from, $to);
+        }
+        
+        if ($reportType === 'weekly') {
+            // Daily report expects the date range
+            return $controller->handleRequest($from, $to);
+        }
+
+        if ($reportType === 'monthly') {
+            // Daily report expects the date range
+            return $controller->handleRequest($from, $to);
+        }
+
+        // Weekly / Monthly still use their own handleRequest() signature
         return $controller->handleRequest();
     } catch (\Throwable $e) {
         error_log('Report generation failed: ' . $e->getMessage());
         return [];
     }
 }
+
 
 /* ────────────────────────────────────────────────
    Access Control
@@ -60,15 +98,34 @@ if (
    ──────────────────────────────────────────────── */
 
 $reportType = sanitize_input($_GET['type'] ?? 'weekly');
-$from = sanitize_input($_GET['from'] ?? date('Y-m-d', strtotime('-7 days')));
-$to   = sanitize_input($_GET['to'] ?? date('Y-m-d'));
+
+// Raw input (what comes from the form)
+$rawFrom = $_GET['from'] ?? null;
+$rawTo   = $_GET['to'] ?? null;
+
+// Apply defaults if nothing selected
+if ($rawFrom === null || $rawFrom === '') {
+    $rawFrom = date('Y-m-d', strtotime('-7 days'));
+}
+if ($rawTo === null || $rawTo === '') {
+    $rawTo = date('Y-m-d');
+}
+
+// Boundary validates / normalises
+$from = normalize_date($rawFrom);
+$to   = normalize_date($rawTo);
+
+// Values for the <input type="date"> (fall back to raw if normalisation failed)
+$fromDisplay = htmlspecialchars($from ?? $rawFrom, ENT_QUOTES, 'UTF-8');
+$toDisplay   = htmlspecialchars($to ?? $rawTo,   ENT_QUOTES, 'UTF-8');
+
 
 /* ────────────────────────────────────────────────
    Controller selection + data fetch
    ──────────────────────────────────────────────── */
 
 $controller = get_report_controller($reportType);
-$reportData = get_report_data($controller);
+$reportData = get_report_data($controller, $reportType, $from, $to);
 
 ?>
 <!DOCTYPE html>
@@ -98,6 +155,11 @@ $reportData = get_report_data($controller);
         position: absolute;
         top: 20px;
         left: 20px;
+        transition: 0.3s;
+    }
+
+    .back-btn:hover {
+        background: #5848d3;
     }
 
     .title {
@@ -173,9 +235,58 @@ $reportData = get_report_data($controller);
 </style>
 </head>
 <body>
+    <!-- 🔙 Back to Dashboard Button -->
     <a href="pm_dashboard.php" class="back-btn">← Back to Dashboard</a>
 
-    <h1 class="title">Platform Manager - View Reports</h1>
+    <!-- Title and Legend (centered title + right legend, no gap) -->
+<div style="
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  position: relative;
+  margin: 0 auto 20px auto;
+  width: 80%;
+  flex-wrap: wrap;
+">
+  <!-- Centered Title -->
+  <h1 style="
+    font-size: 2rem;
+    color: #5b3ee4;
+    margin: 0 auto;
+    text-align: center;
+    flex: 1;
+  ">
+    Platform Manager - View Reports
+  </h1>
+
+  <!-- Legend aligned to the right -->
+  <div style="
+    position: absolute;
+    right: -180px;
+    top: 0;
+    background-color: #f3f0ff;
+    border-left: 4px solid #6a5af9;
+    padding: 12px 18px;
+    border-radius: 8px;
+    max-width: 420px;
+    text-align: left;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    font-size: 14px;
+  ">
+    <h4 style="margin-top: 0; margin-bottom: 6px; color: #5b3ee4; font-size: 15px;">
+      Legend
+    </h4>
+    <p style="margin: 3px 0; color: #333;">
+      <strong>CSR Count</strong> — How many CSR staff was active during the selected period.
+    </p>
+    <p style="margin: 3px 0; color: #333;">
+      <strong>PIN Count</strong> — How many PIN received help. Number of unique service requests that were fulfilled.
+    </p>
+    <p style="margin: 3px 0; color: #333;">
+      <strong>Total Services</strong> — Total number of completed service actions (can include multiple per CSR).
+    </p>
+  </div>
+</div>
 
     <!-- Report Type Toggle -->
     <div class="button-group">
@@ -188,14 +299,15 @@ $reportData = get_report_data($controller);
     <form method="GET" class="filter-section">
         <input type="hidden" name="type" value="<?= htmlspecialchars($reportType) ?>">
         From:
-        <input type="date" name="from" value="<?= htmlspecialchars($from) ?>">
+        <input type="date" name="from" value="<?= $fromDisplay ?>">
         To:
-        <input type="date" name="to" value="<?= htmlspecialchars($to) ?>">
+        <input type="date" name="to" value="<?= $toDisplay ?>">
         <button type="submit" class="toggle-btn active">Apply</button>
     </form>
 
     <!-- Report Data Table -->
     <h3><?= ucfirst($reportType) ?> Report</h3>
+
     <table>
         <thead>
             <tr>

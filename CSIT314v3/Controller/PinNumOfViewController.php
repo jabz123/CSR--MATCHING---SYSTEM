@@ -14,9 +14,13 @@ final class PinNumOfViewController
         $this->repo = $repo ?? new requestEntity();
     }
 
-    /** Thin connector: pass through to Entity */
     public function increment(int $requestId): bool
     {
         return $this->repo->incrementViewCount($requestId);
+    }
+
+    public function getCountForView(int $requestId): int
+    {
+        return $this->repo->getViewCount($requestId);
     }
 }

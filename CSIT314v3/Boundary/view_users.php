@@ -1,5 +1,8 @@
 <?php
 declare(strict_types=1);
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+error_reporting(E_ALL);
 
 require_once __DIR__ . '/../bootstrap.php';
 use App\Controller\view_usersController;
@@ -27,7 +30,7 @@ function esc($val): string
 /**
  * 🔍 Display all users in a searchable table
  */
-function displayUserSearchView(): void
+function displayUserSearchView()
 {
     $searchTerm = trim($_GET['q'] ?? '');
     $searchController = new SearchUserController();
@@ -113,36 +116,26 @@ function displayUserSearchView(): void
     echo "</tbody></table></div>";
 }
 
-/**
- * 📄 Display details of a specific user
- */
-function displayUserDetail(int $id): void
+function displayUserDetail(int $id): ?array
 {
     $detailsController = new ViewUserDetailsController();
     $user = $detailsController->viewUserDetails($id);
 
+    // Return null if not found
     if (!$user) {
-        echo "<div class='card'>
-                <div class='empty-state'>
-                  <div class='empty-icon'>❌</div>
-                  <p>User not found.</p>
-                  <a href='view_users.php' class='btn btn-secondary'>Back to List</a>
-                </div>
-              </div>";
-        return;
+        return null;
     }
 
-    echo "<h2>User Details</h2>
-          <div class='card detail-card'>";
-
-    echo "<div class='detail-row'><span class='detail-label'>ID:</span><span class='detail-value'>" . esc($user['id']) . "</span></div>";
-    echo "<div class='detail-row'><span class='detail-label'>Name:</span><span class='detail-value'><strong>" . esc($user['name']) . "</strong></span></div>";
-    echo "<div class='detail-row'><span class='detail-label'>Profile Type:</span><span class='detail-value'><span class='badge badge-" . esc($user['profile_type']) . "'>" . esc($user['profile_type']) . "</span></span></div>";
-    echo "<div class='detail-row'><span class='detail-label'>Created At:</span><span class='detail-value'>" . esc($user['created_at']) . "</span></div>";
-    echo "<div class='detail-row'><span class='detail-label'>Status:</span><span class='detail-value'>" . esc($user['status']) . "</span></div>";
-    echo "<div class='detail-actions'><a href='view_users.php' class='btn btn-primary'>Back to List</a></div>";
-    echo "</div>";
+    // Build the details array to return
+    return [
+        'id'           => (int)$user['id'],
+        'name'         => (string)$user['name'],
+        'profile_type' => (string)$user['profile_type'],
+        'created_at'   => (string)$user['created_at'],
+        'status'       => (string)$user['status'],
+    ];
 }
+
 
 // --- Page Routing ---
 $userName = htmlspecialchars($_SESSION['name'] ?? 'User');
@@ -155,7 +148,6 @@ $userName = htmlspecialchars($_SESSION['name'] ?? 'User');
   <title>User Management</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    /* --- Keep your existing CSS --- */
     * { margin:0; padding:0; box-sizing:border-box; }
 
     body {
@@ -165,7 +157,6 @@ $userName = htmlspecialchars($_SESSION['name'] ?? 'User');
       padding:20px; position:relative; overflow-x:hidden;
     }
 
-    /* Background Animation */
     body::before {
       content:''; position:absolute; width:100%; height:100%;
       background: radial-gradient(circle at 10% 20%, rgba(99,102,241,0.4) 0%, transparent 40%),
@@ -289,11 +280,35 @@ $userName = htmlspecialchars($_SESSION['name'] ?? 'User');
   <div class="container">
     <?php
     if (isset($_GET['id']) && is_numeric($_GET['id'])) {
-        displayUserDetail((int)$_GET['id']);
+
+        $userDetails = displayUserDetail((int)$_GET['id']);
+
+        if (!$userDetails) {
+            echo "<div class='card'>
+                    <div class='empty-state'>
+                      <div class='empty-icon'>❌</div>
+                      <p>User not found.</p>
+                      <a href='view_users.php' class='btn btn-secondary'>Back to List</a>
+                    </div>
+                  </div>";
+        } else {
+            echo "<h2>User Details</h2>
+                  <div class='card detail-card'>";
+
+            echo "<div class='detail-row'><span class='detail-label'>ID:</span><span class='detail-value'>" . esc($userDetails['id']) . "</span></div>";
+            echo "<div class='detail-row'><span class='detail-label'>Name:</span><span class='detail-value'><strong>" . esc($userDetails['name']) . "</strong></span></div>";
+            echo "<div class='detail-row'><span class='detail-label'>Profile Type:</span><span class='detail-value'><span class='badge badge-" . esc($userDetails['profile_type']) . "'>" . esc($userDetails['profile_type']) . "</span></span></div>";
+            echo "<div class='detail-row'><span class='detail-label'>Created At:</span><span class='detail-value'>" . esc($userDetails['created_at']) . "</span></div>";
+            echo "<div class='detail-row'><span class='detail-label'>Status:</span><span class='detail-value'>" . esc($userDetails['status']) . "</span></div>";
+            echo "<div class='detail-actions'><a href='view_users.php' class='btn btn-primary'>Back to List</a></div>";
+            echo "</div>";
+        }
+
     } else {
         displayUserSearchView();
     }
     ?>
   </div>
+
 </body>
 </html> 

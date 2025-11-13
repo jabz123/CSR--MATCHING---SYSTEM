@@ -29,11 +29,6 @@ final class CSRSearchRequestsController
      */
     public function searchRequests(?string $keyword = null): array
     {
-        // Boundary already trimmed input.
-        if ($keyword === '' || $keyword === null) {
-            return $this->entity->readAllRequests();
-        }
-
         return $this->entity->searchOpenRequests($keyword);
     }
 }

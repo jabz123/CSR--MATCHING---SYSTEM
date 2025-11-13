@@ -15,15 +15,13 @@ final class PinSearchHistoryController
         $this->entity = $entity ?? new pinHistoryEntity();
     }
 
-
     public function search(
         int $pinId,
         ?string $q,
-        ?string $from,
-        ?string $to,
+        ?string $date,
         int $limit = 100,
         int $offset = 0
     ): array {
-        return $this->entity->searchCompleted($pinId, $q, $from, $to, $limit, $offset);
+        return $this->entity->searchCompleted($pinId, $q, $date, $limit, $offset);
     }
 }

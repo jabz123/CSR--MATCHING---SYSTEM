@@ -9,16 +9,9 @@ use App\Entity\requestEntity;
 
 final class PinViewRequestsController
 {
-    /** List requests for a PIN with optional status/q filters and paging */
-    public function list(
-        int $userId,
-        ?string $status = null, // 'open' | 'in_progress' | 'closed' | null (=all)
-        ?string $q = null,
-        int $page = 1,
-        int $perPage = 10
-    ): array {
-        $ent = new requestEntity();
-        return $ent->listByUser($userId, $status, $q, $page, $perPage);
+    public function list(int $userId, ?string $status, int $page, int $perPage): array {
+    $ent = new requestEntity();
+    return $ent->listRequests($userId, $status, $page, $perPage);
     }
 
 }

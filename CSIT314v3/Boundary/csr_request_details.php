@@ -4,14 +4,14 @@ declare(strict_types=1);
 require_once __DIR__ . '/../bootstrap.php';
 session_start();
 
-// ✅ LOAD CONTROLLERS
+// LOAD CONTROLLERS
 require_once $_SERVER['DOCUMENT_ROOT'] . '/CSIT314v3/Controller/CSRViewRequestDetailsController.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/CSIT314v3/Controller/PinNumOfViewController.php';
 
 use App\Controller\CSRViewRequestDetailsController;
 use App\Controller\PinNumOfViewController;
 
-/** ✅ Restrict access to CSR only */
+/** Restrict access to CSR only */
 function restrictAccess(): void {
     if (!isset($_SESSION['user_id']) || strtolower($_SESSION['profile_type'] ?? '') !== 'csr') {
         header('Location: ../login.php');
@@ -19,7 +19,7 @@ function restrictAccess(): void {
     }
 }
 
-/** ✅ Validate & return request ID */
+/** Validate & return request ID */
 function getRequestId(): int {
     if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
         exit('❌ Invalid request ID.');
@@ -33,7 +33,7 @@ function getRequestId(): int {
     return $requestId;
 }
 
-/** ✅ Only increment view count once every 30 mins per CSR */
+/** Only increment view count once every 30 mins per CSR */
 function incrementViewCount(int $requestId): void {
     $viewerId = (int)$_SESSION['user_id'];
     $key = "req_viewed_{$requestId}_by_{$viewerId}";
@@ -46,7 +46,7 @@ function incrementViewCount(int $requestId): void {
     }
 }
 
-/** ✅ Load request details from controller */
+/** Load request details from controller */
 function loadRequestDetails(int $requestId): array {
     $controller = new CSRViewRequestDetailsController();
     $request = $controller->viewDetails($requestId);
@@ -57,7 +57,7 @@ function loadRequestDetails(int $requestId): array {
     return $request;
 }
 
-/** ✅ Render page (HTML unchanged) */
+/** Render page */
 function renderPage(array $request): void {
 ?>
 <!DOCTYPE html>

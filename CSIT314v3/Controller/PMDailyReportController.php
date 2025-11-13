@@ -16,18 +16,8 @@ final class PMDailyReportController
         $this->entity = new PMReportEntity();
     }
 
-    public function handleRequest(): array
+    public function handleRequest(?string $from, ?string $to): array
     {
-        $from = $_GET['from'] ?? null;
-        $to   = $_GET['to'] ?? null;
-
-        if (!empty($from)) {
-            $from = date('Y-m-d', strtotime($from));
-        }
-        if (!empty($to)) {
-            $to = date('Y-m-d', strtotime($to));
-        }
-
         return $this->entity->getDailyReport($from, $to);
     }
 }

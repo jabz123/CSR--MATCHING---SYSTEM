@@ -23,8 +23,7 @@ final class serviceHistoryEntity
     public function searchHistory(
         int $csrId,
         ?string $keyword = '',
-        ?string $startDate = '',
-        ?string $endDate = ''
+        ?string $startDate = ''
     ): array {
         // ⚠️ TEMP: force CSR ID = 26 (remove when ready)
         $csrId = 26;
@@ -52,23 +51,13 @@ final class serviceHistoryEntity
             $params[':kw'] = '%' . $keyword . '%';
         }
 
-        // Date validation helper
-        $isValidDate = static function (?string $d): bool {
-            if (!$d) return false;
-            $dt = \DateTime::createFromFormat('Y-m-d', $d);
-            return $dt && $dt->format('Y-m-d') === $d;
-        };
-
-        $hasStart = $isValidDate($startDate);
-        $hasEnd   = $isValidDate($endDate);
-
-        if ($hasStart && $hasEnd) {
-            $sql .= " AND completed_at BETWEEN :startDt AND :endDt";
-            $params[':startDt'] = $startDate . ' 00:00:00';
-            $params[':endDt']   = $endDate   . ' 23:59:59';
-        } elseif ($hasStart) {
-            $sql .= " AND DATE(completed_at) = :startDate";
-            $params[':startDate'] = $startDate;
+        // ✅ Start date filter (single date only)
+        if (!empty($startDate)) {
+            $dt = \DateTime::createFromFormat('Y-m-d', $startDate);
+            if ($dt && $dt->format('Y-m-d') === $startDate) {
+                $sql .= " AND DATE(completed_at) = :startDate";
+                $params[':startDate'] = $startDate;
+            }
         }
 
         $sql .= " ORDER BY completed_at DESC";

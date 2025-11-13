@@ -2,11 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../bootstrap.php';
-ini_set('display_errors','1'); 
-error_reporting(E_ALL);
-
 use App\Controller\PinUpdateRequestController;
-use App\Entity\requestEntity;
 
 session_start();
 
@@ -38,11 +34,10 @@ function loadRequest(int $id): array {
     return $item;
 }
 
-/* ✅ Load categories using ENTITY (No SQL here anymore) */
 function loadCategories(): array {
-    require_once __DIR__ . '/../Entity/requestEntity.php';
-    $entity = new requestEntity();
-    return $entity->getCategories();
+    require_once __DIR__ . '/../Controller/PinUpdateRequestController.php';
+    $ctl = new PinUpdateRequestController();
+    return $ctl->fetchCategories();
 }
 
 function validateForm(array &$item, array &$errors): void {
@@ -63,20 +58,42 @@ function validateForm(array &$item, array &$errors): void {
     if ($item['title'] === '' || mb_strlen($item['title']) > 255)       $errors[] = 'Title required (max 255).';
 }
 
-function processUpdate(int $id, array $item, array &$errors): void {
+function processUpdate(int $id, array $item, array &$errors): bool {
     require_once __DIR__ . '/../Controller/PinUpdateRequestController.php';
     $ctl = new PinUpdateRequestController();
 
-    if (!$errors) {
-        $ok = $ctl->update((int)$_SESSION['user_id'], $id, $item['category_id'], $item['content'], $item['location'], $item['title']);
+    // If there are already validation errors, skip
+    if ($errors) {
+        return false;
+    }
+
+    $ok = false;
+
+    try {
+        $ok = $ctl->update(
+            (int)$_SESSION['user_id'],
+            $id,
+            (int)$item['category_id'],
+            trim($item['content']),
+            trim($item['location']),
+            trim($item['title'])
+        );
+
         if ($ok) {
             $_SESSION['flash_edit_request'] = '✅ Request updated.';
             header('Location: pin_view_requests.php');
             exit;
+        } else {
+            $errors[] = 'Update failed.';
         }
-        $errors[] = 'Update failed.';
+
+    } catch (Throwable $t) {
+        $errors[] = 'Unexpected error: ' . $t->getMessage();
     }
+
+    return $ok; // true if update succeeded, false otherwise
 }
+
 
 /* ---------------- EXECUTION FLOW ---------------- */
 
@@ -139,7 +156,7 @@ $userName = htmlspecialchars($_SESSION['name'] ?? 'pin');
     <form method="post" action="pin_edit_request.php?id=<?= (int)$item['id'] ?>">
       <input type="hidden" name="_csrf" value="<?= htmlspecialchars($_SESSION['_csrf']) ?>">
 
-      <!-- ✅ Category Dropdown -->
+      <!-- Category Dropdown -->
       <label for="category_id">Category</label>
       <select name="category_id" id="category_id" required>
         <?php foreach ($categories as $cat): ?>

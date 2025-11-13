@@ -3,7 +3,7 @@ session_start();
 
 require_once __DIR__ . '/../bootstrap.php';
 
-// ✅ Check if user is logged in and has platform manager role
+// Check if user is logged in and has platform manager role
 if (!isset($_SESSION['profile_type']) || 
     !in_array(strtolower(trim($_SESSION['profile_type'])), ['platform', 'pm'])) {
     header('Location: login.php');

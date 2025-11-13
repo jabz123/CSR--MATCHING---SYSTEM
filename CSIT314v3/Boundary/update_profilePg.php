@@ -5,10 +5,6 @@ require_once __DIR__ . '/../bootstrap.php';
 use App\Controller\UpdateProfileController;
 require_once __DIR__ . '/../Controller/UpdateProfileController.php';
 
-/* ==============================================
-   ✅ Helper Functions (No behavior change)
-   These keep boundary clean & focused
-================================================ */
 
 /** Get and validate profile ID */
 function getProfileId(): int {
@@ -49,9 +45,6 @@ function updateProfileIfSubmitted(UpdateProfileController $controller, int $id):
     return "Failed to update profile.";
 }
 
-/* ==============================================
-   ✅ Original Code (unchanged)
-================================================ */
 
 $id = getProfileId();
 if (!$id) {

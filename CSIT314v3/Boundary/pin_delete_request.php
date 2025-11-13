@@ -4,13 +4,10 @@ declare(strict_types=1);
 require_once __DIR__ . '/../bootstrap.php';
 use App\Controller\PinDeleteRequestController;
 
-ini_set('display_errors','1'); 
-error_reporting(E_ALL);
 session_start();
 
 /* -------------------- FUNCTIONS -------------------- */
 
-/** ✅ Ensure only PIN users can access */
 function restrictToPIN(): void {
     if (empty($_SESSION['user_id']) || (($_SESSION['profile_type'] ?? '') !== 'pin')) {
         header('Location: login.php');
@@ -18,7 +15,6 @@ function restrictToPIN(): void {
     }
 }
 
-/** ✅ Validate request method must be POST */
 function validateRequestMethod(): void {
     if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
         setFlash('❌ Invalid access.', 'error');
@@ -27,7 +23,6 @@ function validateRequestMethod(): void {
     }
 }
 
-/** ✅ CSRF Token Validation */
 function validateCSRF(): void {
     if (empty($_POST['_csrf']) || empty($_SESSION['_csrf']) || 
         !hash_equals($_SESSION['_csrf'], (string)$_POST['_csrf'])) {
@@ -38,7 +33,6 @@ function validateCSRF(): void {
     }
 }
 
-/** ✅ Validate Request ID */
 function getRequestId(): int {
     $id = (int)($_POST['id'] ?? 0);
     if ($id <= 0) {
@@ -49,14 +43,12 @@ function getRequestId(): int {
     return $id;
 }
 
-/** ✅ Set Flash Message */
 function setFlash(string $message, string $type = 'info'): void {
     $_SESSION['flash'] = $message;
     $_SESSION['flash_type'] = $type;
 }
 
-/** ✅ Perform the deletion using Controller */
-function processDelete(int $requestId): void {
+function processDelete(int $requestId): bool {
     require_once __DIR__ . '/../Controller/PinDeleteRequestController.php';
     $ctl = new PinDeleteRequestController();
 
@@ -65,17 +57,29 @@ function processDelete(int $requestId): void {
 
         if ($ok) {
             setFlash('✅ Request deleted successfully.', 'success');
-        } else {
-            setFlash('⚠️ Unable to delete. It may not belong to you or may already be removed.', 'error');
+            return true;
         }
+
+        setFlash('⚠️ Unable to delete. It may not belong to you or may already be removed.', 'error');
+        return false;
 
     } catch (Throwable $e) {
         setFlash('❌ Error: ' . $e->getMessage(), 'error');
+        return false;
     }
+}
 
+$deleted = processDelete((int)$_POST['id']);
+
+if ($deleted) {
+    header('Location: pin_view_requests.php');
+    exit;
+} else {
+    // Optionally show the error message from flash on the same page
     header('Location: pin_view_requests.php');
     exit;
 }
+
 
 /* -------------------- EXECUTION FLOW -------------------- */
 

@@ -13,15 +13,13 @@ use PDOException;
  */
 final class userAccount
 {
-    public string $profileType;
-    public string $name;
-    public string $passwordHash;
+    public string $profileType = '';
+    public string $name        = '';
+    public string $passwordHash = '';
 
-    public function __construct(string $profileType, string $name, string $passwordHash)
+
+    public function __construct()
     {
-        $this->profileType   = $profileType;
-        $this->name          = $name;
-        $this->passwordHash  = $passwordHash;
     }
 
     /* ================================================================
@@ -224,6 +222,34 @@ final class userAccount
         } catch (PDOException $e) {
             error_log('Database error in getAllProfileTypes: ' . $e->getMessage());
             return [];
+        }
+    }
+
+    public static function login(string $name): ?array
+    {
+        try {
+            $sql = "
+                SELECT 
+                    id,
+                    name,
+                    password_hash,
+                    profile_type,
+                    status,
+                    created_at
+                FROM users
+                WHERE name = :name
+                LIMIT 1
+            ";
+
+            $stmt = self::db()->prepare($sql);
+            $stmt->bindValue(':name', $name, \PDO::PARAM_STR);
+            $stmt->execute();
+            $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+            return $row ?: null;
+        } catch (\PDOException $e) {
+            error_log('Database error in findByLoginName: ' . $e->getMessage());
+            return null;
         }
     }
 }

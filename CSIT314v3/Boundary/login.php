@@ -4,68 +4,63 @@ declare(strict_types=1);
 require_once __DIR__ . '/../bootstrap.php';
 session_start();
 
+require_once __DIR__ . '/../Controller/LoginController.php';
+use App\Controller\LoginController;
+
 $error = '';
 
-/** 🔹 Process the login form */
-function processForm(): void {
+function processForm(): bool {
     global $error;
 
-    $name = trim($_POST['name'] ?? '');
-    $password = trim($_POST['password'] ?? '');
+    $name     = trim((string)($_POST['name'] ?? ''));
+    $password = (string)($_POST['password'] ?? '');
 
     if ($name === '' || $password === '') {
         $error = 'Please enter both username and password.';
-        return;
+        return false;
     }
 
     try {
-        $pdo = new PDO("mysql:host=127.0.0.1;dbname=csit314;charset=utf8mb4", "root", "");
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+        $ctl  = new LoginController();
 
-        $stmt = $pdo->prepare("
-            SELECT id, name, password_hash, profile_type, status 
-            FROM users 
-            WHERE name = :name 
-            LIMIT 1
-        ");
-        $stmt->execute([':name' => $name]);
-        $user = $stmt->fetch();
-
+        $user = $ctl->login($name);
         if (!$user) {
-            $error = 'User not found.';
-            return;
-        }
-
-        if (!password_verify($password, $user['password_hash'])) {
             $error = 'Invalid username or password.';
-            return;
+            return false;
         }
 
-        if (strtolower($user['status']) !== 'active') {
-            $error = 'Your account is suspended.';
-            return;
+        if (strtolower((string)$user['status']) !== 'active') {
+            $error = 'Account is not active.';
+            return false;
         }
 
-        // ✅ Login success — set session
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['name'] = $user['name'];
-        $_SESSION['profile_type'] = $user['profile_type'];
-        $_SESSION['status'] = $user['status'];
-
-        // ✅ Redirect based on role
-        $role = strtolower($user['profile_type']);
-        switch ($role) {
-            case 'platform': header('Location: pm_dashboard.php'); break;
-            case 'admin': header('Location: admin_dashboard.php'); break;
-            case 'csr': header('Location: csr_dashboard.php'); break;
-            case 'pin': header('Location: pin_dashboard.php'); break;
-            default: header('Location: user_dashboard.php'); break;
+        if (!password_verify($password, (string)$user['password_hash'])) {
+            $error = 'Invalid username or password.';
+            return false;
         }
-        exit;
 
-    } catch (PDOException $e) {
-        $error = 'Database error: ' . htmlspecialchars($e->getMessage());
+        // success: set session only (no redirect here)
+        $_SESSION['user_id']      = (int)$user['id'];
+        $_SESSION['name']         = (string)$user['name'];
+        $_SESSION['profile_type'] = strtolower((string)$user['profile_type']);
+        $_SESSION['status']       = 'active';
+
+        return true;
+
+    } catch (\Throwable $e) {
+        $error = 'Login error. Please try again.';
+        error_log('Login failed: '.$e->getMessage());
+        return false;
+    }
+}
+
+function loginRedirectUrl(string $ptype): string {
+    switch ($ptype) {
+        case 'platform': return 'pm_dashboard.php';
+        case 'admin':    return 'admin_dashboard.php';
+        case 'csr':      return 'csr_dashboard.php';
+        case 'pin':      return 'pin_dashboard.php';
+        default:         return 'user_dashboard.php';
     }
 }
 
@@ -177,7 +172,11 @@ function displayPage(): void {
 }
 
 /* -------- PAGE EXECUTION -------- */
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    processForm();
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+    if (processForm()) {
+        $ptype = strtolower((string)($_SESSION['profile_type'] ?? ''));
+        header('Location: ' . loginRedirectUrl($ptype));
+        exit;
+    }
 }
 displayPage();

@@ -1,25 +1,8 @@
 <?php
 declare(strict_types=1);
-
 require_once __DIR__ . '/../bootstrap.php';
-ini_set('display_errors','1');
-ini_set('display_startup_errors','1');
-error_reporting(E_ALL);
-
 session_start();
 
-/* Fatal Error Display - keep exactly as you wanted */
-register_shutdown_function(function () {
-    $e = error_get_last();
-    if ($e && in_array($e['type'], [E_ERROR,E_PARSE,E_CORE_ERROR,E_COMPILE_ERROR])) {
-        http_response_code(500);
-        echo "<pre style='background:#fee;border:1px solid #f99;padding:12px'>";
-        echo "Fatal Error: {$e['message']} in {$e['file']}:{$e['line']}";
-        echo "</pre>";
-    }
-});
-
-/* Access Control */
 if (!isset($_SESSION['user_id']) || strtolower($_SESSION['profile_type'] ?? '') !== 'pin') {
     header('Location: login.php');
     exit;
@@ -27,35 +10,29 @@ if (!isset($_SESSION['user_id']) || strtolower($_SESSION['profile_type'] ?? '') 
 
 /* ----------- REQUIRED FILES ----------- */
 require_once __DIR__ . '/../Controller/PinCreateRequestController.php';
-require_once __DIR__ . '/../Entity/requestEntity.php';
-
 use App\Controller\PinCreateRequestController;
-use App\Entity\requestEntity;
 
 /* ----------- FUNCTIONS ----------- */
 
-/** Fetch categories using Entity */
 function fetchCategories(): array {
-    $entity = new requestEntity();
-    return $entity->getCategories();  // ✅ now using your new entity function
+    $ctl = new PinCreateRequestController();
+    return $ctl->fetchCategories();
 }
 
-/** Validate + Process Form Submission */
-function handleFormSubmission(): array {
-    $errors = [];
-    $success = false;
-
+function handleFormSubmission(): bool {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        return [$success, $errors];
+        return false;
     }
 
-    // ✅ Trim & Validate here (Boundary responsibility)
     $title      = trim($_POST['title'] ?? '');
     $content    = trim($_POST['content'] ?? '');
     $location   = trim($_POST['location'] ?? '');
     $categoryId = (int)($_POST['category_id'] ?? 0);
     $userId     = (int)($_SESSION['user_id'] ?? 0);
 
+    $errors = [];
+
+    // Validate
     if ($title === '' || strlen($title) > 255) {
         $errors[] = 'Title is required (max 255 chars).';
     }
@@ -69,32 +46,44 @@ function handleFormSubmission(): array {
         $errors[] = 'Please select a category.';
     }
 
+    // If validation failed
     if ($errors) {
-        return [$success, $errors];
+        $_SESSION['flash_type'] = 'error';
+        $_SESSION['flash'] = implode('<br>', $errors);
+        return false;
     }
 
-    // ✅ If valid → call controller only
+    // Try to save
     try {
         $controller = new PinCreateRequestController();
         $ok = $controller->create($userId, $categoryId, $content, $location, $title);
 
         if ($ok) {
+            $_SESSION['flash_type'] = 'success';
             $_SESSION['flash'] = 'Request submitted successfully.';
             header('Location: pin_dashboard.php');
             exit;
         }
 
-        $errors[] = 'Saving failed. Please try again.';
-    } catch (Throwable $t) {
-        $errors[] = 'Unexpected error: '.$t->getMessage();
-    }
+        $_SESSION['flash_type'] = 'error';
+        $_SESSION['flash'] = 'Saving failed. Please try again.';
+        return false;
 
-    return [$success, $errors];
+    } catch (Throwable $t) {
+        $_SESSION['flash_type'] = 'error';
+        $_SESSION['flash'] = 'Unexpected error: ' . $t->getMessage();
+        return false;
+    }
 }
 
+
 /* ----------- PAGE EXECUTION ----------- */
-[$success, $errors] = handleFormSubmission();
+$success = handleFormSubmission();
 $categories = fetchCategories();
+$errors = [];
+if (!empty($_SESSION['flash_type']) && $_SESSION['flash_type'] === 'error') {
+    $errors = explode('<br>', $_SESSION['flash']);
+}
 
 ?>
 <!DOCTYPE html>
@@ -166,7 +155,7 @@ $categories = fetchCategories();
         <button type="submit">Submit Request</button>
     </form>
 
-    <a href="pin_dashboard.php" class="back-link">⬅ Back to Dashboard</a>
+    <a href="pin_dashboard.php" class="back-link">Cancel</a>
 </div>
 
 </body>

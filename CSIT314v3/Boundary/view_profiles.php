@@ -12,7 +12,6 @@ require_once __DIR__ . '/../Controller/CreateProfileController.php';
 require_once __DIR__ . '/../Controller/SearchProfileController.php';
 require_once __DIR__ . '/../Controller/ViewProfilesController.php';
 
-/* ------------------- Helper Functions (Boundary Only) ------------------- */
 
 /** Check login */
 function isLoggedIn(): bool {
@@ -36,7 +35,7 @@ function loadProfilesList(ViewProfilesController $vc, SearchProfileController $s
 }
 
 /** Handle add profile form */
-function handleAddProfileForm(CreateProfileController $cc): void {
+function handleAddProfileForm(CreateProfileController $cc): bool {
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['new_profile_type'])) {
         $newType = trim($_POST['new_profile_type']);
         $status = $_POST['status'] ?? 'active';
@@ -50,6 +49,7 @@ function handleAddProfileForm(CreateProfileController $cc): void {
             }
         }
     }
+    return false;
 }
 
 /* ------------------- Page Access Check ------------------- */

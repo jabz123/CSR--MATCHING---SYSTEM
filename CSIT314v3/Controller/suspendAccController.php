@@ -12,4 +12,12 @@ final class suspendAccController
     {
         return userAccount::suspendUser($id, $suspend_acc);
     }
+
+    public function getUserById(int $id): bool
+    {
+        return userAccount::getUserById($id);
+    }
+
+    
+
 }

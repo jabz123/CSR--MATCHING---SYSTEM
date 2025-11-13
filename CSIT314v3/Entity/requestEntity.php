@@ -13,7 +13,7 @@ final class requestEntity
 
     public function __construct()
     {
-        // ✅ Shared DB Connection
+        // Shared DB Connection
         $this->pdo = Database::getConnection();
     }
 
@@ -37,76 +37,16 @@ final class requestEntity
     }
 
     /* ------------------------------------------------------------------
-       📌 PIN Dashboard: Recent requests by user
+       👤 PIN: List all requests  
     ------------------------------------------------------------------ */
-    public function recentByUser(int $userId, int $limit = 20): array
-    {
-        $stmt = $this->pdo->prepare("
-            SELECT 
-                r.request_id,
-                r.category_id,
-                c.category_name,
-                r.title,
-                r.content,
-                r.location,
-                r.status,
-                r.created_at,
-                r.view_count,
-                r.shortlist_count
-            FROM requests r
-            LEFT JOIN service_categories c ON r.category_id = c.category_id
-            WHERE r.user_id = :uid
-            ORDER BY r.request_id DESC
-            LIMIT :lim
-        ");
-        $stmt->bindValue(':uid', $userId, PDO::PARAM_INT);
-        $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
-        $stmt->execute();
-        return $stmt->fetchAll();
-    }
+    public function listRequests(int $userId, ?string $status = null, int $page = 1, int $perPage = 10): array {
+        $page    = max(1, $page);
+        $perPage = max(1, min(50, $perPage));
+        $offset  = ($page - 1) * $perPage;
 
-    /* ------------------------------------------------------------------
-       📊 PIN: Stats by user
-    ------------------------------------------------------------------ */
-    public function statsByUser(int $userId): array
-    {
-        $stmt = $this->pdo->prepare("
-            SELECT 
-                COUNT(*) AS total,
-                SUM(status='open') AS open_count,
-                SUM(status='in_progress') AS in_progress_count,
-                SUM(status='closed') AS closed_count
-            FROM requests
-            WHERE user_id = :uid
-        ");
-        $stmt->execute([':uid' => $userId]);
-        $row = $stmt->fetch() ?: [
-            'total' => 0,
-            'open_count' => 0,
-            'in_progress_count' => 0,
-            'closed_count' => 0
-        ];
-        foreach ($row as $k => $v) $row[$k] = (int)$v;
-        return $row;
-    }
-
-    /* ------------------------------------------------------------------
-       👤 PIN: List requests (with optional filters + category name)
-    ------------------------------------------------------------------ */
-    public function listByUser(
-        int $userId,
-        ?string $status = null,
-        ?string $q = null,
-        int $page = 1,
-        int $perPage = 10
-    ): array {
-        $page   = max(1, $page);
-        $offset = ($page - 1) * $perPage;
-
-        $where = "FROM requests r 
-                  LEFT JOIN service_categories c ON r.category_id = c.category_id
-                  WHERE r.user_id = :uid";
-
+        $where = "FROM requests r
+                LEFT JOIN service_categories c ON r.category_id = c.category_id
+                WHERE r.user_id = :uid";
         $args  = [':uid' => $userId];
 
         if ($status !== null && $status !== '' && $status !== 'all') {
@@ -114,20 +54,15 @@ final class requestEntity
             $args[':status'] = $status;
         }
 
-        if ($q !== null && $q !== '') {
-            $where .= " AND (r.content LIKE :q OR r.title LIKE :q)";
-            $args[':q'] = '%' . $q . '%';
-        }
-
-        // total count
+        // total
         $stmt = $this->pdo->prepare("SELECT COUNT(*) {$where}");
-        foreach ($args as $k => $v) { $stmt->bindValue($k, $v); }
+        foreach ($args as $k => $v) $stmt->bindValue($k, $v);
         $stmt->execute();
         $total = (int)$stmt->fetchColumn();
 
-        // fetch rows
+        // rows
         $sql = "
-            SELECT 
+            SELECT
                 r.request_id,
                 r.category_id,
                 c.category_name,
@@ -142,15 +77,80 @@ final class requestEntity
             ORDER BY r.request_id DESC
             LIMIT :lim OFFSET :off
         ";
-
         $stmt = $this->pdo->prepare($sql);
-        foreach ($args as $k => $v) { $stmt->bindValue($k, $v); }
-        $stmt->bindValue(':lim', $perPage, PDO::PARAM_INT);
-        $stmt->bindValue(':off', $offset, PDO::PARAM_INT);
+        foreach ($args as $k => $v) $stmt->bindValue($k, $v);
+        $stmt->bindValue(':lim', $perPage, \PDO::PARAM_INT);
+        $stmt->bindValue(':off', $offset, \PDO::PARAM_INT);
         $stmt->execute();
 
         return [
-            'rows'    => $stmt->fetchAll(),
+            'rows'    => $stmt->fetchAll(\PDO::FETCH_ASSOC),
+            'total'   => $total,
+            'page'    => $page,
+            'perPage' => $perPage,
+            'pages'   => (int)ceil($total / $perPage),
+        ];
+    }
+
+    /* ------------------------------------------------------------------
+       👤 PIN: Search requests by keywords and/or filter by status
+    ------------------------------------------------------------------ */
+
+    public function searchRequests(int $userId, string $keyword, ?string $status = null, int $page = 1, int $perPage = 10): array {
+        $keyword = trim($keyword);
+        if ($keyword === '') {
+            // Empty keyword -> return empty result set
+            return ['rows' => [], 'total' => 0, 'page' => 1, 'perPage' => $perPage, 'pages' => 0];
+        }
+
+        $page    = max(1, $page);
+        $perPage = max(1, min(50, $perPage));
+        $offset  = ($page - 1) * $perPage;
+
+        $where = "FROM requests r
+                LEFT JOIN service_categories c ON r.category_id = c.category_id
+                WHERE r.user_id = :uid";
+        $args  = [':uid' => $userId];
+
+        if ($status !== null && $status !== '' && $status !== 'all') {
+            $where .= " AND r.status = :status";
+            $args[':status'] = $status;
+        }
+
+        $where .= " AND (r.content LIKE :q OR r.title LIKE :q)";
+        $args[':q'] = '%'.$keyword.'%';
+
+        // total
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) {$where}");
+        foreach ($args as $k => $v) $stmt->bindValue($k, $v);
+        $stmt->execute();
+        $total = (int)$stmt->fetchColumn();
+
+        // rows
+        $sql = "
+            SELECT
+                r.request_id,
+                r.category_id,
+                c.category_name,
+                r.title,
+                r.content,
+                r.location,
+                r.status,
+                r.created_at,
+                r.view_count,
+                r.shortlist_count
+            {$where}
+            ORDER BY r.request_id DESC
+            LIMIT :lim OFFSET :off
+        ";
+        $stmt = $this->pdo->prepare($sql);
+        foreach ($args as $k => $v) $stmt->bindValue($k, $v);
+        $stmt->bindValue(':lim', $perPage, \PDO::PARAM_INT);
+        $stmt->bindValue(':off', $offset, \PDO::PARAM_INT);
+        $stmt->execute();
+
+        return [
+            'rows'    => $stmt->fetchAll(\PDO::FETCH_ASSOC),
             'total'   => $total,
             'page'    => $page,
             'perPage' => $perPage,
@@ -233,6 +233,7 @@ final class requestEntity
                 r.created_at
             FROM requests r
             LEFT JOIN service_categories c ON r.category_id = c.category_id
+            WHERE r.status = 'open'
             ORDER BY r.created_at DESC
         ";
         $stmt = $this->pdo->query($sql);
@@ -275,7 +276,7 @@ final class requestEntity
     ------------------------------------------------------------------ */
     public function searchOpenRequests(string $keyword): array
     {
-        $stmt = $this->pdo->prepare("
+        $sql = "
             SELECT 
                 r.request_id, 
                 r.category_id,
@@ -290,15 +291,29 @@ final class requestEntity
             FROM requests r
             LEFT JOIN service_categories c ON r.category_id = c.category_id
             WHERE r.status = 'open'
-              AND (r.title LIKE :kw OR r.content LIKE :kw OR r.location LIKE :kw)
-            ORDER BY r.created_at DESC
-        ");
-        $stmt->execute([':kw' => '%' . $keyword . '%']);
+        ";
+
+        $params = [];
+
+        // Only add search filter if keyword is not empty
+        if (trim($keyword) !== '') {
+            $sql .= " 
+            AND (r.title LIKE :kw OR r.content LIKE :kw OR r.location LIKE :kw)
+            ";
+            $params[':kw'] = '%' . $keyword . '%';
+        }
+
+        $sql .= " ORDER BY r.created_at DESC";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+
     /* ------------------------------------------------------------------
-       ❌ Delete Request Owned by User
+       ❌ Delete Request
     ------------------------------------------------------------------ */
     public function hardDeleteForUser(int $userId, int $requestId): bool
     {
@@ -309,7 +324,7 @@ final class requestEntity
     }
 
     /* ------------------------------------------------------------------
-       Update View Count
+       PIN: Update View Count in database
     ------------------------------------------------------------------ */
     public function incrementViewCount(int $requestId): bool
     {
@@ -319,7 +334,7 @@ final class requestEntity
     }
 
     /* ------------------------------------------------------------------
-       Update Shortlist Count
+       Update Shortlist Count in database
     ------------------------------------------------------------------ */
     public function incrementShortlistCount(int $requestId): bool
     {
@@ -336,6 +351,29 @@ final class requestEntity
         }
     }
 
+    /* ------------------------------------------------------------------
+       Retrieve view count from requests table  in db
+    ------------------------------------------------------------------ */
+    public function getViewCount(int $requestId): int
+    {
+        $stmt = $this->pdo->prepare('SELECT view_count FROM requests WHERE request_id = :id');
+        $stmt->execute([':id' => $requestId]);
+        return (int)($stmt->fetchColumn() ?: 0);
+    }
+
+    /* ------------------------------------------------------------------
+       Retrieve shortlist count from requests table in db
+    ------------------------------------------------------------------ */
+    public function getShortlistCount(int $requestId): int
+    {
+        $stmt = $this->pdo->prepare('SELECT shortlist_count FROM requests WHERE request_id = :id');
+        $stmt->execute([':id' => $requestId]);
+        return (int)($stmt->fetchColumn() ?: 0);
+    }
+
+    /* ------------------------------------------------------------------
+       Retrieve category array from service_categories in db
+    ------------------------------------------------------------------ */
     public function getCategories(): array
     {
         $stmt = $this->pdo->query("

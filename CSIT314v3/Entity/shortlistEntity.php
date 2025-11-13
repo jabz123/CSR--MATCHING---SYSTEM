@@ -17,6 +17,7 @@ final class shortlistEntity
         $this->pdo = Database::getConnection();
     }
 
+    /** ✅ Check if a request already exists in CSR's shortlist */
     public function existsInShortlist(int $csrId, int $requestId): bool
     {
         $stmt = $this->pdo->prepare("
@@ -28,10 +29,11 @@ final class shortlistEntity
         return (int)$stmt->fetchColumn() > 0;
     }
 
+    /** ✅ Add a request to shortlist */
     public function addToShortlist(int $csrId, int $requestId): bool
     {
         try {
-            // ✅ Prevent duplicates
+            // Prevent duplicates
             if ($this->existsInShortlist($csrId, $requestId)) {
                 return false;
             }
@@ -47,12 +49,13 @@ final class shortlistEntity
         }
     }
 
+    /** ✅ View all shortlisted requests for a CSR */
     public function getShortlistByCSR(int $csrId): array
     {
         $sql = "
             SELECT 
                 s.id AS shortlist_id,
-                s.created_at AS added_at,
+                s.created_at AS created_at,   -- ✅ fixed alias (was added_at)
                 r.request_id,
                 r.title,
                 r.location,
@@ -67,15 +70,17 @@ final class shortlistEntity
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    /** ✅ Search shortlist by keyword (title or location) */
     public function searchShortlist(int $csrId, string $keyword = ''): array
     {
         $sql = "
             SELECT 
-                s.id, 
-                r.title, 
-                r.location, 
-                r.status, 
-                r.created_at
+                s.id AS shortlist_id,
+                s.created_at AS created_at,   -- ✅ consistent with above
+                r.request_id,
+                r.title,
+                r.location,
+                r.status
             FROM csr_shortlist s
             JOIN requests r ON s.request_id = r.request_id
             WHERE s.csr_id = :cid

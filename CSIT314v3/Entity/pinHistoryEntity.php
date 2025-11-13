@@ -13,11 +13,14 @@ final class pinHistoryEntity
 
     public function __construct()
     {
-        // ✅ Use shared database connection
+        // Use shared database connection
         $this->pdo = Database::getConnection();
     }
 
-    public function findByPin(
+    /* ------------------------------------------------------------------
+       Retrieve history array by pin_id from db
+    ------------------------------------------------------------------ */
+    public function listHistoryByPin(
         int $pinId,
         ?string $status = null,
         int $limit = 200,
@@ -57,42 +60,21 @@ final class pinHistoryEntity
         }
     }
 
+    /* ------------------------------------------------------------------
+       Search history by keywords and/or date range
+    ------------------------------------------------------------------ */
     public function searchCompleted(
         int $pinId,
         ?string $q = null,
-        ?string $from = null,
-        ?string $to   = null,
+        ?string $date = null,
         int $limit = 100,
         int $offset = 0
     ): array {
         $forcedPinId = 2;
-
         $q = ($q !== null) ? trim($q) : null;
 
-        $fromDT = $from ? \DateTime::createFromFormat('Y-m-d', trim($from)) : null;
-        $toDT   = $to   ? \DateTime::createFromFormat('Y-m-d', trim($to))   : null;
-
-        $fromSql = $fromDT ? $fromDT->format('Y-m-d 00:00:00') : null;
-        $toSql   = $toDT   ? $toDT->format('Y-m-d 23:59:59')   : null;
-
-        if ($fromSql && $toSql && $fromSql > $toSql) { [$fromSql, $toSql] = [$toSql, $fromSql]; }
-
-        $limit  = max(1, (int)$limit);
-        $offset = max(0, (int)$offset);
-
-        $like = null;
-        if ($q !== null && $q !== '') {
-            $like = strtr($q, [
-                '\\' => '\\\\',
-                '%'  => '\%',
-                '_'  => '\_',
-            ]);
-            $like = '%' . $like . '%';
-        }
-
         $sql = "
-            SELECT
-                h.history_id, h.request_id, h.volunteer_id, h.status, h.completed_at,
+            SELECT h.history_id, h.request_id, h.volunteer_id, h.status, h.completed_at,
                 h.title, h.description
             FROM pin_history h
             JOIN requests r ON r.request_id = h.request_id
@@ -102,15 +84,20 @@ final class pinHistoryEntity
 
         $params = [ ':pin_id' => $forcedPinId ];
 
-        if ($like !== null) {
-            $sql .= " AND (h.title LIKE :q ESCAPE '\\\\' OR h.description LIKE :q ESCAPE '\\\\') ";
-            $params[':q'] = $like;
+        if ($q) {
+            $sql .= " AND (h.title LIKE :q OR h.description LIKE :q)";
+            $params[':q'] = '%' . str_replace(['%', '_'], ['\%', '\_'], $q) . '%';
         }
-        if ($fromSql) { $sql .= " AND h.completed_at >= :from "; $params[':from'] = $fromSql; }
-        if ($toSql)   { $sql .= " AND h.completed_at <= :to   "; $params[':to']   = $toSql;   }
 
-        $sql .= " ORDER BY h.history_id ASC
-                LIMIT $limit OFFSET $offset ";
+        if ($date) {
+            $start = $date . ' 00:00:00';
+            $end   = $date . ' 23:59:59';
+            $sql .= " AND h.completed_at BETWEEN :start AND :end";
+            $params[':start'] = $start;
+            $params[':end'] = $end;
+        }
+
+        $sql .= " ORDER BY h.history_id ASC LIMIT $limit OFFSET $offset";
 
         $stmt = $this->pdo->prepare($sql);
         foreach ($params as $k => $v) {
@@ -120,4 +107,5 @@ final class pinHistoryEntity
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
 }

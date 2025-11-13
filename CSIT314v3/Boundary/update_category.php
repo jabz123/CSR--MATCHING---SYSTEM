@@ -7,9 +7,6 @@ session_start();
 use App\Controller\PMUpdateCategoryController;
 require_once dirname(__DIR__) . '/Controller/PMUpdateCategoryController.php';
 
-/* ============================================================
-   🔧 Helper Functions
-============================================================ */
 
 /** Get category ID from query string */
 function getCategoryId(): int {
@@ -42,9 +39,6 @@ function updateCategoryIfSubmitted(PMUpdateCategoryController $controller, int $
     return 'Failed to update category. Try again.';
 }
 
-/* ============================================================
-   ✅ Original Boundary Code (Retained)
-============================================================ */
 
 // Access control
 if (
@@ -65,7 +59,7 @@ if (!$category) {
     exit;
 }
 
-$alert = updateCategoryIfSubmitted($controller, $id); // ← now clean
+$alert = updateCategoryIfSubmitted($controller, $id);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -74,7 +68,6 @@ $alert = updateCategoryIfSubmitted($controller, $id); // ← now clean
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Update Category</title>
 <style>
-/* (Your CSS retained exactly) */
 body {
   font-family: "Poppins", sans-serif;
   background: linear-gradient(135deg,#d7e2ff,#e5d9ff,#f1e7ff);

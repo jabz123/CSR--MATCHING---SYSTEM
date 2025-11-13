@@ -23,7 +23,6 @@ if (!isset($_SESSION['user_id']) || strtolower($_SESSION['profile_type'] ?? '') 
     exit;
 }
 
-// ---- Friendly name + safe escaping ----
 $userName = htmlspecialchars($_SESSION['username'] ?? $_SESSION['name'] ?? 'CSR Representative', ENT_QUOTES, 'UTF-8');
 
 // ---- CSRF token for downstream forms ----

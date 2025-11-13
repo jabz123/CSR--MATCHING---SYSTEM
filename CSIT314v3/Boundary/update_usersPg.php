@@ -1,5 +1,8 @@
 <?php
 declare(strict_types=1);
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+error_reporting(E_ALL);
 
 require_once __DIR__ . '/../bootstrap.php';
 
@@ -44,17 +47,33 @@ function loadUser(UpdateUserController $controller, int $id, array &$errors): ?a
 /* ============================================================
    ✅ Step 3: Process Form Submission
 ============================================================ */
-function processForm(UpdateUserController $controller, int $id): array {
-    $errors = [];
-    $success = '';
-
-    $name = trim($_POST['name'] ?? '');
+function processForm(UpdateUserController $controller, int $id): bool {
+    $name        = trim($_POST['name'] ?? '');
     $profileType = strtolower(trim($_POST['profile_type'] ?? ''));
 
-    [$errors, $success] = $controller->updateUser($id, $name, $profileType);
+    // --- Validation ---
+    if ($name === '') {
+        echo "<script>alert('Name cannot be empty.');</script>";
+        return false;
+    }
 
-    return [$errors, $success];
+    if (!in_array($profileType, ['admin', 'csr', 'pin', 'platform'], true)) {
+        echo "<script>alert('Invalid profile type.');</script>";
+        return false;
+    }
+
+    // --- Perform update (controller returns bool) ---
+    $updated = $controller->updateUser($id, $name, $profileType);
+
+    if ($updated) {
+        echo "<script>alert('User updated successfully!');</script>";
+        return true;
+    } else {
+        echo "<script>alert('Failed to update user or no changes made.');</script>";
+        return false;
+    }
 }
+
 
 /* ============================================================
    ✅ MAIN PAGE FLOW (Procedural)

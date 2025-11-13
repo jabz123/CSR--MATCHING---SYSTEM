@@ -1,16 +1,30 @@
-<?php
+<?php 
 declare(strict_types=1);
 
 require_once __DIR__ . '/../bootstrap.php';
-ini_set('display_errors','1');
-ini_set('log_errors','1');
-error_reporting(E_ALL);
-
 session_start();
 
+use App\Controller\CSRViewHistoryController;
 use App\Controller\CSRSearchHistoryController;
+
+// Manual includes (if not autoloaded)
+require_once $_SERVER['DOCUMENT_ROOT'] . '/CSIT314v3/Controller/CSRViewHistoryController.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . '/CSIT314v3/Controller/CSRSearchHistoryController.php';
 
+/**
+ * ============================================================
+ * Boundary: csr_service_history.php
+ * Role: CSR Representative’s View/Search for Service History
+ * Structure:
+ *   1️⃣ handleRequest()  – main entry
+ *   2️⃣ getFilterInput() – reads GET filters
+ *   3️⃣ viewAllHistory() – calls CSRViewHistoryController
+ *   4️⃣ searchFilteredHistory() – calls CSRSearchHistoryController
+ *   5️⃣ renderPage() – outputs HTML
+ * ============================================================
+ */
+
+/* ---------- 1️⃣ Main Entry ---------- */
 function handleRequest(): void
 {
     if (!isset($_SESSION['user_id']) || strtolower($_SESSION['profile_type'] ?? '') !== 'csr') {
@@ -19,25 +33,42 @@ function handleRequest(): void
     }
 
     $csrId = (int)$_SESSION['user_id'];
-    [$history, $keyword, $startDate] = loadHistory($csrId);
+    [$keyword, $startDate] = getFilterInput();
+
+    // Call appropriate controller
+    if ($keyword !== '' || $startDate !== '') {
+        $history = searchFilteredHistory($csrId, $keyword, $startDate);
+    } else {
+        $history = viewAllHistory($csrId);
+    }
 
     $userName = htmlspecialchars($_SESSION['username'] ?? 'CSR Representative', ENT_QUOTES, 'UTF-8');
-
     renderPage($history, $keyword, $startDate, $userName);
 }
 
-function loadHistory(int $csrId): array
+/* ---------- 2️⃣ Extract Filters ---------- */
+function getFilterInput(): array
 {
     $keyword   = trim($_GET['q'] ?? '');
     $startDate = trim($_GET['start'] ?? '');
-    $endDate   = trim($_GET['end'] ?? ''); // NEW
-
-    $controller = new CSRSearchHistoryController();
-    $history = $controller->searchHistory($csrId, $keyword, $startDate, $endDate);
-
-    return [$history, $keyword, $startDate];
+    return [$keyword, $startDate];
 }
 
+/* ---------- 3️⃣ Controller #1 – View All History ---------- */
+function viewAllHistory(int $csrId): array
+{
+    $controller = new CSRViewHistoryController();
+    return $controller->viewHistory($csrId);
+}
+
+/* ---------- 4️⃣ Controller #2 – Search/Filtered History ---------- */
+function searchFilteredHistory(int $csrId, string $keyword, string $startDate): array
+{
+    $controller = new CSRSearchHistoryController();
+    return $controller->searchHistory($csrId, $keyword, $startDate, '');
+}
+
+/* ---------- 5️⃣ Render HTML Page ---------- */
 function renderPage(array $history, string $keyword, string $startDate, string $userName): void
 {
     ?>
@@ -54,7 +85,7 @@ function renderPage(array $history, string $keyword, string $startDate, string $
   header a:hover { background: rgba(255,255,255,0.25); }
   .container { padding: 20px; max-width: 1000px; margin: auto; }
   h1 { color: #4f46e5; }
-  form { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+  form { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; align-items: center; }
   input, button { padding: 8px; border-radius: 6px; border: 1px solid #ccc; }
   button { background: #4f46e5; color: white; border: none; font-weight: 600; cursor: pointer; }
   button:hover { background: #4338ca; }
@@ -65,9 +96,8 @@ function renderPage(array $history, string $keyword, string $startDate, string $
   .badge { padding: 4px 10px; border-radius: 12px; color: white; font-size: 0.8rem; }
   .badge-completed { background: #10b981; }
   .badge-cancelled { background: #ef4444; }
-  .btn{padding:10px 16px;border:0;border-radius:10px;background:#4f46e5;color:#fff;cursor:pointer;text-decoration:none;font-size:14px;font-weight: 500}
-  .btn1{padding:10px 16px;border:0;border-radius:10px;background:#4f46e5;color:#fff;cursor:pointer;text-decoration:none;font-size:14px; font-weight: 500}
-
+  .btn { padding:10px 16px;border:0;border-radius:10px;background:#4f46e5;color:#fff;cursor:pointer;text-decoration:none;font-size:14px;font-weight:500 }
+  .btn1 { padding:10px 16px;border:0;border-radius:10px;background:#4f46e5;color:#fff;cursor:pointer;text-decoration:none;font-size:14px;font-weight:500 }
 </style>
 </head>
 <body>
@@ -130,4 +160,6 @@ function renderPage(array $history, string $keyword, string $startDate, string $
 </html>
 <?php
 }
+
+/* ---------- Run Program ---------- */
 handleRequest();

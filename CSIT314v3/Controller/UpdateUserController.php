@@ -15,28 +15,7 @@ final class UpdateUserController
     }
 
     /** ✅ Update user logic */
-    public function updateUser(int $id, string $name, string $profileType): array {
-        $errors = [];
-        $success = '';
-
-        // Basic validation
-        if ($name === '') {
-            $errors[] = 'Name cannot be empty.';
-        }
-        if (!in_array($profileType, ['admin', 'csr', 'pin', 'platform'], true)) {
-            $errors[] = 'Please select a valid profile type.';
-        }
-
-        // If no validation errors, proceed to update
-        if (!$errors) {
-            $updated = userAccount::updateUser($id, $name, $profileType);
-            if ($updated) {
-                $success = 'User updated successfully!';
-            } else {
-                $errors[] = 'Failed to update user or no changes made.';
-            }
-        }
-
-        return [$errors, $success];
+    public function updateUser(int $id, string $name, string $profileType): bool {
+        return userAccount::updateUser($id, $name, $profileType);
     }
 }

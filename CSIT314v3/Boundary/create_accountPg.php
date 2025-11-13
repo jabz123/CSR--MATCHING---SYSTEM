@@ -1,56 +1,46 @@
 <?php
 declare(strict_types=1);
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+error_reporting(E_ALL);
 
 require_once __DIR__ . '/../bootstrap.php';
 session_start();
 
 require_once dirname(__DIR__) . '/Controller/CreateAccountController.php';
-require_once dirname(__DIR__) . '/Entity/userAccount.php';
-
 use App\Controller\CreateAccountController;
-use App\Entity\userAccount;
-$controller = new CreateAccountController();
-$profiles = $controller->getActiveProfiles();
-function handleCreateAccountPage(): void
-{
-    // (Show PHP errors during development)
-    ini_set('display_errors', '1');
-    ini_set('display_startup_errors', '1');
-    error_reporting(E_ALL);
 
-    $profiles = userAccount::getAllProfileTypes();
+function handleCreateAccountPage(): bool
+{
+    $controller = new CreateAccountController();
+    $profiles = $controller->getActiveProfiles();
     $errors = [];
     $success = '';
+    $ok = false; 
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        // 👉 Trim input here
         $name        = trim($_POST['name'] ?? '');
         $passwordRaw = $_POST['password'] ?? '';
         $profileType = trim($_POST['profile_type'] ?? '');
 
-        // 👉 UI validation
         if ($name === '' || $passwordRaw === '' || $profileType === '') {
             $errors[] = 'Please fill in all fields.';
         } elseif (strlen($passwordRaw) < 8) {
             $errors[] = 'Password must be at least 8 characters.';
-        } else {
+        }else {
             $passwordHash = password_hash($passwordRaw, PASSWORD_DEFAULT);
-            $controller = new CreateAccountController();
-
-            // Use controller logic (returns [bool, message])
-            [$ok, $msg] = $controller->handleCreateAccount($name, $passwordHash, strtolower($profileType));
+            $ok  = $controller->handleCreateAccount($name, $passwordHash, strtolower($profileType));
 
             if ($ok) {
                 $success = '✅ Account created successfully!';
             } else {
-                $errors[] = $msg ?: '⚠️ Unable to create account.';
+                // Show a message when username already exists / insert fails
+                $errors[] = '⚠️ Unable to create account. Username may already exist.';
             }
         }
     }
-
-    // 👉 Render the HTML form
-    ?>
-    <!DOCTYPE html>
+?>
+<!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="UTF-8">
@@ -129,7 +119,7 @@ function handleCreateAccountPage(): void
     </body>
     </html>
     <?php
-}
 
-// 
-handleCreateAccountPage();
+    return $ok;
+}
+$created = handleCreateAccountPage();

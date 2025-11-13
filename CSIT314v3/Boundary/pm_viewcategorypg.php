@@ -6,12 +6,16 @@ session_start();
 use App\Controller\PMCreateCategoryController;
 use App\Controller\PMDeleteCategoryController;
 use App\Controller\PMSearchCategoryController;
+use App\Controller\PMGetAllCategoryController;
+
 
 require_once __DIR__ . '/../Controller/pm_createcontrollerpage.php';
 require_once __DIR__ . '/../Controller/PMDeleteCategoryController.php';
 require_once __DIR__ . '/../Controller/PMSearchCategoryController.php';
+require_once __DIR__ . '/../Controller/PMGetAllCategoryController.php';
 
-// ✅ Access Control
+
+// Access Control
 if (
     !isset($_SESSION['user_id']) ||
     !isset($_SESSION['profile_type']) ||
@@ -30,18 +34,21 @@ $alertMsg  = '';
 $createController = new PMCreateCategoryController();
 $deleteController = new PMDeleteCategoryController();
 $searchController = new PMSearchCategoryController();
+$getAllController = new PMGetAllCategoryController();
 
-/* ============================================================
-   FUNCTIONS (Boundary helpers; keep SQL out of boundary)
-   ============================================================ */
 
 /**
- * Load categories for display (uses Controller, no SQL here)
+ * Load categories for display
  */
 function loadCategories(string $searchTerm = ''): array {
     $searchTerm = trim($searchTerm);
     global $searchController;
     return $searchController->searchCategories($searchTerm);
+}
+
+function displayAllCategories(): array {
+    global $getAllController;
+    return $getAllController->getAllCategories();
 }
 
 /**

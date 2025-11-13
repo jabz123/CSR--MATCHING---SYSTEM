@@ -20,4 +20,10 @@ final class PinCreateRequestController
     {
         return $this->repo->create($userId, $categoryId, $content, $location, $title);
     }
+
+    public function fetchCategories(): array
+    {
+        return $this->repo->getCategories();
+    }
+
 }

@@ -16,21 +16,8 @@ final class PMWeeklyReportController
         $this->entity = new PMReportEntity();
     }
 
-    public function handleRequest(): array
+    public function handleRequest(?string $from = null, ?string $to = null): array
     {
-        // ✅ Get filters from GET parameters
-        $from = $_GET['from'] ?? null;
-        $to   = $_GET['to'] ?? null;
-
-        // ✅ Normalize to MySQL date format
-        if (!empty($from)) {
-            $from = date('Y-m-d', strtotime($from));
-        }
-        if (!empty($to)) {
-            $to = date('Y-m-d', strtotime($to));
-        }
-
-        // ✅ Pass filters to entity
         return $this->entity->getWeeklyReport($from, $to);
     }
 }

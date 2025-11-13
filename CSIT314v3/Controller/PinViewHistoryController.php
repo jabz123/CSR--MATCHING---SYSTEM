@@ -8,29 +8,24 @@ use App\Entity\pinHistoryEntity;
 
 final class PinViewHistoryController
 {
-  private pinHistoryEntity $entity;
+    private pinHistoryEntity $entity;
 
-  public function __construct(?pinHistoryEntity $entity = null)
-  {
-    $this->entity = $entity ?? new pinHistoryEntity();
-  }
+    public function __construct(?pinHistoryEntity $entity = null)
+    {
+        $this->entity = $entity ?? new pinHistoryEntity();
+    }
 
-  /**
-   * Orchestrates the use case for the boundary.
-   * No SQL/DB here—delegates to the Entity.
-   */
-  public function listForPin(
+    public function listForPin(
     int $pinId,
     ?string $status = null,
     int $limit = 200,
     int $offset = 0
-  ): array {
-    // (Optional) validate inputs/transform params here
-    $status = $status ? strtolower($status) : null;
-    if ($status && !in_array($status, ['completed','cancelled'], true)) {
-      $status = null; // or throw
+    ): array {
+        $status = $status ? strtolower($status) : null;
+        if ($status && !in_array($status, ['completed','cancelled'], true)) {
+        $status = null; // or throw
+        }
+        return $this->entity->listHistoryByPin($pinId, $status, $limit, $offset);
     }
-    return $this->entity->findByPin($pinId, $status, $limit, $offset);
-  }
-}
 
+}

@@ -2,17 +2,12 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../bootstrap.php';
-// MAX DEBUG — keep while fixing
-ini_set('display_errors', '1');
-ini_set('log_errors', '1');
-error_reporting(E_ALL);
-
 session_start();
 
 // 0) Checkpoint
 echo "<!-- checkpoint: start -->\n";
 
-// 1) Role guard (PIN must be EXACT capitalization)
+// 1) Role guard
 if (empty($_SESSION['user_id'])) {
     echo "<pre style='color:#b00;background:#fee;padding:10px;border:1px solid #fbb'>SESSION missing user_id. Redirecting to login…</pre>";
     header('Location: login.php'); exit;
@@ -71,41 +66,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') ==
 
     header('Location: pin_dashboard.php'); exit; // PRG
 }
-
-// 4) Load Entity (with checks), fetch data
-$entPath = __DIR__ . '/../Entity/requestEntity.php';
-if (!file_exists($entPath)) {
-    echo "<pre style='color:#b00;background:#fee;padding:10px;border:1px solid #fbb'>Entity file missing: "
-         . htmlspecialchars($entPath) . "</pre>";
-    exit;
-}
-require_once $entPath;
-
-if (!class_exists('\\App\\Entity\\requestEntity')) {
-    echo "<pre style='color:#b00;background:#fee;padding:10px;border:1px solid #fbb'>Entity class not found: \\App\\Entity\\requestEntity</pre>";
-    exit;
-}
-
-try {
-    $repo     = new \App\Entity\requestEntity();
-    $userId   = (int)$_SESSION['user_id'];
-    $userName = htmlspecialchars($_SESSION['name'] ?? 'pin');
-
-    // These calls can throw—surround with try
-    $stats    = $repo->statsByUser($userId);
-    $requests = $repo->recentByUser($userId, 8);
-
-    // Basic structure sanity
-    if (!is_array($stats))  { throw new \RuntimeException('statsByUser did not return array'); }
-    if (!is_array($requests)) { throw new \RuntimeException('recentByUser did not return array'); }
-
-} catch (\Throwable $e) {
-    echo "<pre style='color:#b00;background:#fee;padding:10px;border:1px solid #fbb'>Entity/DB EXCEPTION: "
-         . htmlspecialchars($e->getMessage()) . "\nFile: " . $e->getFile() . ':' . $e->getLine() . "</pre>";
-    exit;
-}
-
-echo "<!-- checkpoint: data loaded ok -->\n";
+$userName = htmlspecialchars($_SESSION['name'] ?? 'pin');
 ?>
 
 <!doctype html>
@@ -177,14 +138,6 @@ echo "<!-- checkpoint: data loaded ok -->\n";
     <h1>Manage Your Requests</h1>
     <p class="muted">Create a new help request, and track the progress of your existing ones.</p>
 
-    <!-- Stats -->
-    <div class="stats">
-      <div class="stat"><div class="muted">Total</div><div class="big"><?= (int)$stats['total'] ?></div></div>
-      <div class="stat"><div class="muted">Open</div><div class="big"><?= (int)$stats['open_count'] ?></div></div>
-      <div class="stat"><div class="muted">In Progress</div><div class="big"><?= (int)$stats['in_progress_count'] ?></div></div>
-      <div class="stat"><div class="muted">Closed</div><div class="big"><?= (int)$stats['closed_count'] ?></div></div>
-    </div>
-
     <!-- Action Cards (like your admin screenshot) -->
     <div class="cards">
       <div class="card">
@@ -204,7 +157,7 @@ echo "<!-- checkpoint: data loaded ok -->\n";
         <h3>History</h3>
         <p class="muted">View all your completed history.</p>
         <br>
-        <a class="btn btn-gray" href="pin_search_history.php">Completed Request</a>
+        <a class="btn btn-gray" href="pin_history_table.php">Completed Request</a>
       </div>
     </div>
   </div>

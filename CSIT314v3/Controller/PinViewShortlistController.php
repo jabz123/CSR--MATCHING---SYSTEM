@@ -3,26 +3,22 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use App\Entity\shortlistEntity;
+use App\Entity\requestEntity;
 
-require_once __DIR__ . '/../Entity/shortlistEntity.php';
+require_once __DIR__ . '/../Entity/requestEntity.php';
 
 final class PinViewShortlistController
 {
-    private shortlistEntity $entity;
+    private requestEntity $entity;
 
     public function __construct()
     {
-        $this->entity = new shortlistEntity();
+        $this->entity = new requestEntity();
     }
 
-    public function add(int $csrId, int $requestId): bool
+    public function getCountForShortlist(int $requestId): int
     {
-        return $this->entity->addShortlist($csrId, $requestId);
+        return $this->entity->getShortlistCount($requestId);
     }
 
-    public function remove(int $csrId, int $requestId): bool
-    {
-        return $this->entity->removeShortlist($csrId, $requestId);
-    }
 }

@@ -1,7 +1,6 @@
 <?php
 declare(strict_types=1);
 
-
 require_once __DIR__ . '/../bootstrap.php';
 ini_set('display_errors', '1');
 error_reporting(E_ALL);
@@ -10,11 +9,6 @@ session_start();
 
 require_once __DIR__ . '/../Controller/suspendAccController.php';
 use App\Controller\suspendAccController;
-
-/* ----------------------------------------------------
-   ✅ Context-Relevant Helper Functions (Suspend Feature)
-   (No behaviour changes — only centralizing boundary tasks)
----------------------------------------------------- */
 
 /** Ensure user is logged in & an admin */
 function require_admin_access(string $returnUrl): void {
@@ -56,9 +50,25 @@ function redirect_to(string $url): void {
     exit;
 }
 
-/* ----------------------------------------------------
-   Original Code (Retained exactly as you wrote)
----------------------------------------------------- */
+/** Suspend or activate a user - returns true for success, false for failure */
+function suspend_user(int $targetId, bool $sFlag): bool {
+    $ctl = new suspendAccController();
+    
+    try {
+        // Call suspendUser from the controller
+        $ok = $ctl->suspendUser($targetId, $sFlag);
+        
+        // If the action failed, fetch user info from the Entity layer
+        if (!$ok) {
+            $u = $ctl->getUserById($targetId); // Using the entity to get user details
+            return false;  // Return false if the user suspension/activation failed
+        }
+    } catch (\Throwable $e) {
+        return false;  // Return false if an exception occurred
+    }
+
+    return true;  // Return true if suspension/activation was successful
+}
 
 $returnUrl = 'view_users.php';
 
@@ -76,42 +86,29 @@ if (is_self_suspend($targetId)) {
     redirect_to($returnUrl . '?notice=self');
 }
 
-$ctl = new suspendAccController();
-$ok  = false;
-$why = null;
+// Use the function to suspend or activate the user and handle the result
+$ok = suspend_user($targetId, $sFlag);
 
-try {
-    $ok = $ctl->suspendUser((int)$targetId, $sFlag);
-    if (!$ok) {
-        require_once __DIR__ . '/../Entity/userAccount.php';
-        $u = \App\Entity\userAccount::getUserById((int)$targetId);
-        $why = $u ? 'db_update_failed' : 'no_such_id';
-    }
-} catch (\Throwable $e) {
-    $why = 'exception:' . $e->getMessage();
-}
-
-$code = $ok ? ($sFlag ? 'suspended' : 'activated') : 'failed';
+// Redirect with appropriate notice based on success or failure
 $q = [
-    'notice' => $code,
+    'notice' => $ok ? ($sFlag ? 'suspended' : 'activated') : 'failed',
     'id'     => (string)$targetId,
 ];
-if (!$ok && $why) {
-    $q['why'] = $why;
+
+if (!$ok) {
+    $q['why'] = 'db_update_failed'; // You can add more detailed failure reasons if needed
 }
 
 if (!headers_sent()) {
     header('Location: ' . $returnUrl . '?' . http_build_query($q));
     exit;
 }
-
 ?>
 <!doctype html>
 <html lang="en">
 <head><meta charset="utf-8"><title>Redirecting…</title></head>
 <body>
-  <p><?= htmlspecialchars($ok ? 'Success' : 'Failed') ?> (<?= htmlspecialchars($code) ?><?= isset($q['why']) ? ', ' . htmlspecialchars($q['why']) : '' ?>)</p>
+  <p><?= htmlspecialchars($ok ? 'Success' : 'Failed') ?> (<?= htmlspecialchars($q['notice']) ?>)</p>
   <p><a href="<?= htmlspecialchars($returnUrl . '?' . http_build_query($q)) ?>">Back to list</a></p>
 </body>
 </html>
-    

@@ -2,12 +2,20 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../bootstrap.php';
-ini_set('display_errors','1');
-error_reporting(E_ALL);
+
 session_start();
 
 require_once __DIR__ . '/../Controller/PinViewRequestsController.php';
 use App\Controller\PinViewRequestsController;
+
+require_once __DIR__ . '/../Controller/PinNumOfViewController.php';
+use App\Controller\PinNumOfViewController;
+
+require_once __DIR__ . '/../Controller/PinViewShortlistController.php';
+use App\Controller\PinViewShortlistController;
+
+require_once __DIR__ . '/../Controller/PinSearchRequestsController.php';
+use App\Controller\PinSearchRequestsController;
 
 if (empty($_SESSION['user_id']) || (($_SESSION['profile_type'] ?? '') !== 'pin')) {
   header('Location: login.php'); exit;
@@ -48,9 +56,27 @@ function get_filters(): array {
 }
 
 function load_requests(int $userId, ?string $status, ?string $q, int $page, int $perPage): array {
-    $ctl = new PinViewRequestsController();
-    return $ctl->list($userId, $status, $q, $page, $perPage);
+    if ($q !== null && $q !== '') {
+        // Use the SEARCH controller when keyword exists
+        $searchCtl = new PinSearchRequestsController();
+        return $searchCtl->search($userId, $q, $status, $page, $perPage);
+    }
+
+    // Otherwise, use the LIST controller
+    $listCtl = new PinViewRequestsController();
+    return $listCtl->list($userId, $status, $page, $perPage);
 }
+
+function view_count(int $id): int {
+    $ctl = new PinNumOfViewController();
+    return (int)$ctl->getCountForView($id);
+}
+
+function shortlist_count(int $id): int {
+    $ctl = new PinViewShortlistController();
+    return (int)$ctl->getCountForShortlist($id);
+}
+
 
 list($flash, $type) = flash_message();
 [$status, $q, $page, $perPage] = get_filters();
@@ -213,10 +239,10 @@ $total = (int)($data['total'] ?? 0);
                 </div>
                 <div>
                     <div class="desc-label">View Count</div>
-                    <div><?= (int)($r['view_count'] ?? 0) ?></div>
+                    <div><?= view_count($rid) ?></div>
                     <br>
                     <div class="desc-label">Shortlist Count</div>
-                    <div><?= (int)($r['shortlist_count'] ?? 0) ?></div>
+                    <div><?= shortlist_count($rid) ?></div>
                 </div>
             </div>
           </td>
